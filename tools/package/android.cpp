@@ -271,6 +271,9 @@ static void writeManifest(const char* filename, const SETTINGS& s, const Runtime
 		// Use portrait orientation as default.
 		<<"\t\t\tandroid:screenOrientation=\"portrait\"\n"
 		<<"\t\t\tandroid:configChanges=\"keyboardHidden|orientation\"\n"
+		// TODO: Is "singleTask" really what we want? Probably needed now,
+		// but do more research on this.
+		<<"\t\t\tandroid:launchMode=\"singleTask\"\n"
 		<<"\t\t\tandroid:label=\"@string/app_name\">\n"
 		<<"\t\t\t<intent-filter>\n"
 		<<"\t\t\t\t<action android:name=\"android.intent.action.MAIN\" />\n"
@@ -284,6 +287,7 @@ static void writeManifest(const char* filename, const SETTINGS& s, const Runtime
 		<<"\t\t\tandroid:label=\"@string/app_name\">\n"
 		<<"\t\t</activity>\n"
 		<<"\t\t<activity android:name=\".TextBox\"\n"
+		<<"\t\t\tandroid:configChanges=\"keyboardHidden|orientation\"\n"
 		<<"\t\t\tandroid:label=\"@string/app_name\">\n"
 		<<"\t\t</activity>\n"
 		// Enable Google AdMob Ads.
@@ -392,6 +396,7 @@ static void writePermissions(ostream& stream, const SETTINGS& s, const RuntimeIn
 	writePermission(stream, isPermissionSet(permissionSet, PUSH_NOTIFICATIONS), permMessage.c_str());
 	writePermission(stream, isPermissionSet(permissionSet, PUSH_NOTIFICATIONS), "com.google.android.c2dm.permission.RECEIVE");
 }
+
 static void writePermission(ostream& stream, bool flag, const char* nativePerm) {
 	if (flag) {
 		stream <<"\t<uses-permission android:name=\""<<nativePerm<<"\" />\n";
@@ -449,7 +454,46 @@ static void writeC2DMReceiver(ostream& stream, const string& packageName) {
 	stream << "\t\t\t</intent-filter>\n";
 	stream << "\t\t</receiver>\n";
 }
+
+// TODO: Why was this commented out? Comment what it was intended to
+// be used for or delete.
 //<<"\tpackage=\"" << packageName << "\"\n"
+
+#if(0)
+// TODO: Add autostart.
+// Autostart is missing from this builder. Here is the "old" Java code
+// from the Eclipse repo that adds the autostart receiver.
+/**
+ * Create XML definition for a BroadcastReceiver that is used to autostart
+ * the application.
+ *
+ * @param project	The project file object.
+ * @return			A string with the BroadcastReceiver XML definition.
+ */
+private String createAutoStartXML(MoSyncProject project)
+{
+	// Check if the auto start permission is set, if not, return an empty string.
+	IApplicationPermissions permissions = project.getPermissions();
+	if (!permissions.isPermissionRequested(ICommonPermissions.AUTOSTART))
+	{
+		return "";
+	}
+
+	// Create the auto start definition.
+	String autoStartXML =
+		"\t\t<receiver android:enabled=\"true\"\n" +
+		"\t\t\tandroid:name=\".MoSyncAutoStart\"\n" +
+		"\t\t\tandroid:permission=\"android.permission.RECEIVE_BOOT_COMPLETED\">\n" +
+		"\t\t\t<intent-filter>\n" +
+		"\t\t\t\t<action android:name=\"android.intent.action.BOOT_COMPLETED\" />\n" +
+		"\t\t\t\t<category android:name=\"android.intent.category.DEFAULT\" />\n" +
+		"\t\t\t</intent-filter>\n" +
+		"\t\t</receiver>\n";
+
+	return autoStartXML;
+}
+#endif
+
 static void writeMain(const char* filename, const SETTINGS& s, const RuntimeInfo& ri) {
 	ofstream file(filename, ios::binary);
 	file <<"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
