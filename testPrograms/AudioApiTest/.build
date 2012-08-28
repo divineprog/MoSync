@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <buildSequence>
-<buildStep type="cmd">
-<cmd foe="false" name="Bundle resources" pf="false" pt="">%mosync-bin%/Bundle -in %current-project%/LocalFiles -out %current-project%/Resources/LocalFiles.bin -toLower</cmd>
-</buildStep>
+<buildStep type="com.mobilesorcery.sdk.html5.debugsupport"/>
 <buildStep type="resource"/>
 <buildStep type="compile"/>
 <buildStep type="link"/>

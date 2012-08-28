@@ -39,6 +39,7 @@ import static com.mosync.internal.generated.MAAPI_consts.MA_AUDIO_ERR_IS_PLAYING
 
 import java.io.File;
 import java.io.FileDescriptor;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ShortBuffer;
@@ -394,13 +395,15 @@ public class MoSyncAudio implements OnCompletionListener, OnPreparedListener, On
 		int flags,
 		int length)
 	{
-		if(flags != MA_AUDIO_DATA_STREAM)
+		if (flags != MA_AUDIO_DATA_STREAM)
 		{
-			if(mSoundPool == null)
+			if (mSoundPool == null)
 			{
 				mSoundPool = new SoundPool(10, AudioManager.STREAM_MUSIC, 0);
-				if(mSoundPool == null)
+				if (mSoundPool == null)
+				{
 					return MA_AUDIO_ERR_INVALID_INSTANCE;
+				}
 			}
 		}
 
@@ -409,24 +412,39 @@ public class MoSyncAudio implements OnCompletionListener, OnPreparedListener, On
 
 		try
 		{
-			FileDescriptor fileDesc =
-					getActivity().openFileInput(
-					fileName).getFD();
+			FileInputStream stream;
 
-			if(flags != MA_AUDIO_DATA_STREAM)
+			if (fileName.contains("/"))
 			{
-					// Now open the file in the Sound Pool
-					poolID = mSoundPool.load(fileDesc, 0, length, 1);
+				File file = new File(fileName);
+				stream = new FileInputStream(file);
+			}
+			else
+			{
+				stream = getActivity().openFileInput(fileName);
+			}
+
+			FileDescriptor fileDesc = stream.getFD();
+			stream.close();
+
+			if (flags != MA_AUDIO_DATA_STREAM)
+			{
+				// Now open the file in the Sound Pool
+				poolID = mSoundPool.load(fileDesc, 0, length, 1);
 			}
 		}
-		catch(Exception e)
+		catch (Exception e)
 		{
+			Log.e("@@@@@@", "audioCreateFromFile exception: " + e);
+			Log.e("@@@@@@", "audioCreateFromFile fileName: " + fileName);
 			e.printStackTrace();
 			return MA_AUDIO_ERR_INVALID_FILE;
 		}
 
 		// Add entry to audio resource table.
-		mAudioData.put(mNumAudioData, new AudioData(fileName, poolID, flags, length, false));
+		mAudioData.put(
+			mNumAudioData,
+			new AudioData(fileName, poolID, flags, length, false));
 
 		mNumAudioData++;
 		return mNumAudioData-1;

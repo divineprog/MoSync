@@ -118,13 +118,13 @@ public:
 				if ((mSoundSources[i].audioData = maAudioDataCreateFromResource(
 						NULL, mSoundSources[i].resource, 0,
 						maGetDataSize(mSoundSources[i].resource), 0)) < 0) {
-					maMessageBox("Error", "Failed to initialize sound source!");
+					maMessageBox("Error", "Failed to initialize sound source 1");
 				}
 			} else if (mSoundSources[i].type == URL) {
 				if ((mSoundSources[i].audioData = maAudioDataCreateFromURL(NULL,
 						mSoundSources[i].url.c_str(), MA_AUDIO_DATA_STREAM))
 						< 0) {
-					maMessageBox("Error", "Failed to initialize sound source!");
+					maMessageBox("Error", "Failed to initialize sound source 2");
 				}
 			}
 		}
@@ -166,19 +166,19 @@ public:
 		if (mPlayButton == button) {
 			if (mCurrentSoundSource->audioInstance < 0)
 				maMessageBox("Error",
-						"Invalid audio instance (try to create it first)");
+						"Invalid audio instance (try to create it first) 1");
 			else
 				maAudioPlay(mCurrentSoundSource->audioInstance);
 		} else if (mPauseButton == button) {
 			if (mCurrentSoundSource->audioInstance < 0)
 				maMessageBox("Error",
-						"Invalid audio instance (try to create it first)");
+						"Invalid audio instance (try to create it first) 2");
 			else
 				maAudioPause(mCurrentSoundSource->audioInstance);
 		} else if (mStopButton == button) {
 			if (mCurrentSoundSource->audioInstance < 0)
 				maMessageBox("Error",
-						"Invalid audio instance (try to create it first)");
+						"Invalid audio instance (try to create it first) 3");
 			else
 				maAudioStop(mCurrentSoundSource->audioInstance);
 		} else if (mCreateInstanceButton == button) {
