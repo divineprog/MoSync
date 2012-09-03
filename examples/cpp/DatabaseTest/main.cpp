@@ -290,10 +290,8 @@ public:
 		MAHandle cursor = maDBExecSQL(
 			db,
 			"SELECT * FROM pet WHERE name='NameThatDoesNotExist'");
-		SHOULD_HOLD(0 < cursor, "SELECT did not return cursor");
-		int result = maDBCursorNext(cursor);
-		SHOULD_HOLD(MA_DB_NO_ROW == result, "MA_DB_NO_ROW failed");
-		maDBCursorDestroy(cursor);
+		printf("CURSOR: %i\n", cursor);
+		SHOULD_HOLD(cursor <= 0, "SELECT should not return a cursor");
 
 		// Query all rows.
 		cursor = maDBExecSQL(db, "SELECT * FROM pet");
@@ -364,7 +362,7 @@ public:
 			}
 		}
 
-		result = maDBCursorDestroy(cursor);
+		int result = maDBCursorDestroy(cursor);
 		SHOULD_HOLD(MA_DB_OK == result, "maDBCursorDestroy failed");
 
 		result = maDBClose(db);
@@ -434,7 +432,7 @@ public:
 		MAHandle cursor = maDBExecSQL(
 			db,
 			"SELECT COUNT(*) FROM (SELECT * FROM paramtest)");
-		SHOULD_HOLD(0 < cursor, "SELECT 1 did not return cursor");
+		SHOULD_HOLD(0 < cursor, "SELECT did not return cursor (1)");
 		maDBCursorNext(cursor);
 		int numberOfRows;
 		maDBCursorGetColumnInt(cursor, 0, &numberOfRows);
@@ -449,10 +447,7 @@ public:
 			params,
 			0
 			);
-		SHOULD_HOLD(0 < cursor, "SELECT 2 did not return cursor");
-		result = maDBCursorNext(cursor);
-		SHOULD_HOLD(MA_DB_NO_ROW == result, "MA_DB_NO_ROW failed");
-		maDBCursorDestroy(cursor);
+		SHOULD_HOLD(cursor <= 0, "SELECT should not return a cursor");
 
 		// Query all rows and check that column data is correct.
 		// Note: To use blob fields in a WHERE clause is not supported.
@@ -466,7 +461,7 @@ public:
 			params,
 			3
 			);
-		SHOULD_HOLD(0 < cursor, "SELECT 3 did not return cursor");
+		SHOULD_HOLD(0 < cursor, "SELECT did not return cursor (2)");
 		result = maDBCursorNext(cursor);
 		SHOULD_HOLD(MA_DB_OK == result, "maDBCursorNext failed");
 

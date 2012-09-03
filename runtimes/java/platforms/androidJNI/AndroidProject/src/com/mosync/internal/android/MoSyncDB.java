@@ -29,6 +29,16 @@ public class MoSyncDB
 	private HashMap<Integer, MoCursor> mCursorTable =
 		new HashMap<Integer, MoCursor>();
 
+	/**
+	 * This object is used to return errors from execSQLHelper.
+	 */
+	private final MoCursor CURSOR_ERROR = new MoCursor(null);
+
+	/**
+	 * This object is used to return result code OK from execSQLHelper.
+	 */
+	private final MoCursor CURSOR_OK = new MoCursor(null);
+
 	public MoSyncDB()
 	{
 	}
@@ -253,16 +263,20 @@ public class MoSyncDB
 		try
 		{
 			//Log.i("@@@@@", "execSQLHelper query: " + sql);
-			MoCursor cursor = database.execQuery(sql, params);
-			if (null != cursor)
+			MoCursor cursor = database.execQuery(sql, params, this);
+			if (CURSOR_ERROR == cursor)
+			{
+				return MA_DB_ERROR;
+			}
+			else if (CURSOR_OK == cursor)
+			{
+				return MA_DB_OK;
+			}
+			else
 			{
 				++mCursorCounter;
 				addCursor(mCursorCounter, cursor);
 				return mCursorCounter;
-			}
-			else
-			{
-				return MA_DB_OK;
 			}
 		}
 		catch (SQLiteException ex)
@@ -636,11 +650,13 @@ public class MoSyncDB
 			}
 		}
 
-		public MoCursor execQuery(String sql, Object[] params)
+		/**
+		 * @return CURSOR_ERROR if an error occurs, CURSOR_OK if the query
+		 * is OK but no result is given, another cursor object on success.
+		 */
+		public MoCursor execQuery(String sql, Object[] params, MoSyncDB mosyncDB)
 			throws SQLException
 		{
-			Cursor cursor = null;
-
 			String trimmedSQL = sql.trim().toUpperCase();
 
 			// SELECT queries need to be called using rawQuery.
@@ -690,7 +706,26 @@ public class MoSyncDB
 						}
 					}
 				}
-				cursor = mDB.rawQuery(sql, stringParams);
+
+				// Execute query.
+				Cursor cursor = mDB.rawQuery(sql, stringParams);
+
+				if (null == cursor)
+				{
+					// No cursor returned, consider this an error.
+					return mosyncDB.CURSOR_ERROR;
+				}
+				else if (cursor.getCount() < 1)
+				{
+					// Empty result set, return OK result code.
+					return mosyncDB.CURSOR_OK;
+				}
+				else
+				{
+					// We got a cursor and the cursor contains rows,
+					// return it wrapped in a MoSync cursor object.
+					return new MoCursor(cursor);
+				}
 			}
 			else if (
 				trimmedSQL.startsWith("INSERT") ||
@@ -743,9 +778,17 @@ public class MoSyncDB
 						}
 					}
 				}
-				query.executeInsert();
+				long result = query.executeInsert();
 				query.releaseReference();
 				query.close();
+				if (-1 == result)
+				{
+					return mosyncDB.CURSOR_ERROR;
+				}
+				else
+				{
+					return mosyncDB.CURSOR_OK;
+				}
 			}
 			else
 			{
@@ -756,17 +799,8 @@ public class MoSyncDB
 				query.execute();
 				query.releaseReference();
 				query.close();
-			}
 
-			// If we got a cursor, we return it wrapped in a MoSync
-			// cursor object.
-			if (null == cursor)
-			{
-				return null;
-			}
-			else
-			{
-				return new MoCursor(cursor);
+				return mosyncDB.CURSOR_OK;
 			}
 		}
 	}
