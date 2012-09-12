@@ -107,6 +107,7 @@ static HashMap<MoDBCursor> gCursorTable;
 
 void MoSyncDBInit(void) {
 }
+
 void MoSyncDBClose(void) {
 	gCursorTable.close();
 
@@ -297,38 +298,73 @@ int maDBExecSQL(MAHandle databaseHandle, const char* sql)
 	return runStatement(statement);
 }
 
+	union UU {
+		int i;
+		double d;
+		MADBBlob blob;
+		MAHandle dataHandle;
+		MADBText text;
+		longlong i64;
+	};
+
 extern "C"
-MAHandle maDBExecSQLParams(MAHandle databaseHandle, const char* sql,
-	const MADBValue* params, int paramCount)
+MAHandle maDBExecSQLParams(
+	MAHandle databaseHandle,
+	const char* sql,
+	const MADBValue* params,
+	int paramCount)
 {
 	sqlite3_stmt* statement;
 	int result = prepStatement(databaseHandle, sql, statement);
 	if (result < 0)
 		return result;
 
+	Log("------ MoRE -------\n");
+	int size = paramCount * (sizeof(MADBValue) / sizeof(int));
+	Log("sizeof(MADBValue): %i\n", sizeof(MADBValue));
+	Log("sizeof(MADBBlob): %i\n", sizeof(MADBBlob));
+	Log("sizeof(MADBText): %i\n", sizeof(MADBText));
+	Log("sizeof(MAAddress): %i\n", sizeof(MAAddress));
+	Log("sizeof(MAString): %i\n", sizeof(MAString));
+	Log("sizeof(UU): %i\n", sizeof(UU));
+	Log("__builtin_offsetof(MADBValue, type): %i\n", __builtin_offsetof(MADBValue, type));
+	Log("size: %i\n", size);
+	int* pInt = (int*) params;
+	for (int n = 0; n < size; ++n)
+	{
+		Log("%i %08x\n", n, pInt[n]);
+	}
+
 	// Bind parameters
 	for(int i=1; i<=paramCount; i++) {
 		const MADBValue& v(params[i-1]);
+		Log("@@ binding index: %i to type: %i\n", i, v.type);
 		switch(v.type) {
 		case MA_DB_TYPE_NULL:
+		Log("@@ binding null for index: %i\n", i);
 			result = sqlite3_bind_null(statement, i);
 			break;
 		case MA_DB_TYPE_INT:
+		Log("@@ binding int for index: %i\n", i);
 			result = sqlite3_bind_int(statement, i, v.i);
 			break;
 		case MA_DB_TYPE_INT64:
+		Log("@@ binding int64 for index: %i\n", i);
 			result = sqlite3_bind_int64(statement, i, v.i64);
 			break;
 		case MA_DB_TYPE_DOUBLE:
+		Log("@@ binding double for index: %i\n", i);
 			result = sqlite3_bind_double(statement, i, v.d);
 			break;
 		case MA_DB_TYPE_BLOB:
+		Log("@@ binding blob for index: %i\n", i);
 			result = sqlite3_bind_blob(statement, i,
 				gSyscall->GetValidatedMemRange(v.blob.data, v.blob.size),
 				v.blob.size, SQLITE_STATIC);
 			break;
 		case MA_DB_TYPE_DATA:
 			{
+		Log("@@ binding data for index: %i\n", i);
 				Stream* s = gSyscall->resources.get_RT_BINARY(v.dataHandle);
 				int length;
 				MYASSERT(s->length(length), ERR_DATA_ACCESS_FAILED);
@@ -347,6 +383,7 @@ MAHandle maDBExecSQLParams(MAHandle databaseHandle, const char* sql,
 			break;
 		case MA_DB_TYPE_TEXT:
 			{
+		Log("@@ binding text for index: %i\n", i);
 				const char* text;
 				if(v.text.length >= 0)
 					text = (char*)gSyscall->GetValidatedMemRange(v.text.addr, v.text.length);
@@ -354,6 +391,10 @@ MAHandle maDBExecSQLParams(MAHandle databaseHandle, const char* sql,
 					text = gSyscall->GetValidatedStr(v.text.addr);
 				result = sqlite3_bind_text(statement, i, text, v.text.length, SQLITE_STATIC);
 			}
+			break;
+		default:
+			//BIG_PHAT_ERROR("Invalid data type in maDBExecSQLParams");
+		Log("@@ error for binding index: %i\n", i);
 			break;
 		}
 		DEBUG_ASSERT(result == SQLITE_OK);
@@ -494,6 +535,9 @@ int maDBCursorGetColumnInt(
 	int columnIndex,
 	int* value)
 {
+
+Log("Log maDBCursorGetColumnInt\n");
+
 	// Get the cursor object.
 	int result;
 	MoDBCursor* cursor = MoDBGetCursor(cursorHandle, columnIndex, &result);
@@ -524,7 +568,7 @@ int maDBCursorGetColumnDouble(
 		return result;
 	}
 
-	// Get the int value.
+	// Get the double value.
 	double v = sqlite3_column_double(
 		cursor->getStatement(),
 		columnIndex);

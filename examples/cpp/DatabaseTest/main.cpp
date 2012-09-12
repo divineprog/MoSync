@@ -421,6 +421,16 @@ public:
 
 		params[5].type = MA_DB_TYPE_NULL;
 
+		lprintfln("------ MoSync -------\n");
+		int size = 6 * (sizeof(MADBValue) / sizeof(int));
+		lprintfln("sizeof(MADBValue): %i\n", sizeof(MADBValue));
+		lprintfln("size: %i\n", size);
+		int* pInt = (int*) params;
+		for (int n = 0; n < size; ++n)
+		{
+			lprintfln("%i %08x\n", n, pInt[n]);
+		}
+
 		result = maDBExecSQLParams(
 			db,
 			"INSERT INTO paramtest VALUES (?, ?, ?, ?, ?, ?)",
@@ -432,7 +442,7 @@ public:
 		MAHandle cursor = maDBExecSQL(
 			db,
 			"SELECT COUNT(*) FROM (SELECT * FROM paramtest)");
-		SHOULD_HOLD(0 < cursor, "SELECT did not return cursor (1)");
+		SHOULD_HOLD(cursor > 0, "SELECT did not return cursor (1)");
 		maDBCursorNext(cursor);
 		int numberOfRows;
 		maDBCursorGetColumnInt(cursor, 0, &numberOfRows);
@@ -451,17 +461,17 @@ public:
 
 		// Query all rows and check that column data is correct.
 		// Note: To use blob fields in a WHERE clause is not supported.
-		cursor = maDBExecSQLParams(
+		cursor = maDBExecSQL(//Params(
 			db,
-			"SELECT * FROM paramtest WHERE "
-			"textValue=? AND "
-			"intValue=? AND "
-			"doubleValue=? AND "
-			"nullValue IS NULL",
-			params,
-			3
+			"SELECT * FROM paramtest" // WHERE nullValue IS NULL",
+			//"textValue=? AND "
+			//"intValue=? AND "
+			//"doubleValue=? AND "
+			//"nullValue IS NULL",
+			//params,
+			//0//3
 			);
-		SHOULD_HOLD(0 < cursor, "SELECT did not return cursor (2)");
+		SHOULD_HOLD(cursor > 0, "SELECT did not return cursor (2)");
 		result = maDBCursorNext(cursor);
 		SHOULD_HOLD(MA_DB_OK == result, "maDBCursorNext failed");
 
@@ -472,6 +482,8 @@ public:
 
 		int i;
 		result = maDBCursorGetColumnInt(cursor, 1, &i);
+		printf("@@@ result: %i\n", result);
+		printf("@@@ i: %i\n", i);
 		SHOULD_HOLD(MA_DB_OK == result, "Could not get value of column 2");
 		SHOULD_HOLD(i == 42, "int");
 
@@ -488,7 +500,7 @@ public:
 		SHOULD_HOLD(MA_DB_OK == result, "Could not get value of column 5");
 		SHOULD_HOLD(memcmp(text.c_str(), "more blob data", 14) == 0, "data");
 
-		result = DBUtil::getColumnDataAsString(cursor, 5, text);
+		result = DBUtil::getColumnDataAsString(cursor, 2, text);
 		SHOULD_HOLD(MA_DB_NULL == result, "Column 6 is not NULL");
 
 		// There should be no more rows.
@@ -520,7 +532,7 @@ public:
 		printf("Database test\n");
 
 		DBTest test;
-		test.runTest();
+		//test.runTest();
 		test.testParameters();
 
 		printf("Touch screen to run test 1000 times\n");
