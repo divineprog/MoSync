@@ -4295,7 +4295,7 @@ namespace Base
 
 		jmethodID methodID = jNIEnv->GetMethodID(
 			cls,
-			"maAudioInstanceDestroy",
+			"maAudioSetVolume",
 			"(IF)I");
 
 		if (methodID == 0)
