@@ -117,8 +117,8 @@ public class MoSync extends Activity
 	 * Creates and initializes the MoSync thread
 	 * Calls the createMoSyncView method and then shows the created view.
 	 */
-    @Override
-    public void onCreate(Bundle savedInstanceState)
+	@Override
+	public void onCreate(Bundle savedInstanceState)
 	{
 		Log.i("MoSync", "MoSync onCreate");
 
@@ -184,12 +184,12 @@ public class MoSync extends Activity
 		}
 
 		registerShutdownListener();
-    }
+	}
 
-    public MoSyncThread getMoSyncThread()
-    {
-    	return mMoSyncThread;
-    }
+	public MoSyncThread getMoSyncThread()
+	{
+		return mMoSyncThread;
+	}
 
 	public void setRootView(View root)
 	{
@@ -239,7 +239,7 @@ public class MoSync extends Activity
 	}
 
 	@Override
-    protected void onStart()
+	protected void onStart()
 	{
 		Log.i("MoSync", "onStart");
 
@@ -248,8 +248,8 @@ public class MoSync extends Activity
 		if (theMoSyncThreadIsDead()) { return ; }
 	}
 
-    @Override
-    protected void onStop()
+	@Override
+	protected void onStop()
 	{
 		Log.i("MoSync", "onStop");
 		super.onStop();
@@ -260,7 +260,7 @@ public class MoSync extends Activity
 	}
 
 	@Override
-    protected void onResume()
+	protected void onResume()
 	{
 		SYSLOG("onResume");
 
@@ -283,7 +283,7 @@ public class MoSync extends Activity
 	}
 
 	@Override
-    protected void onPause()
+	protected void onPause()
 	{
 		Log.i("MoSync", "onPause");
 		super.onPause();
@@ -304,10 +304,10 @@ public class MoSync extends Activity
 		int[] event = new int[1];
 		event[0] = EVENT_TYPE_FOCUS_LOST;
 		mMoSyncThread.postEvent(event);
-    }
+	}
 
 	@Override
-    protected void onRestart()
+	protected void onRestart()
 	{
 		Log.i("MoSync", "onRestart");
 
@@ -317,7 +317,7 @@ public class MoSync extends Activity
 	}
 
 	@Override
-    protected void onDestroy()
+	protected void onDestroy()
 	{
 		Log.i("MoSync", "onDestroy");
 
@@ -336,7 +336,7 @@ public class MoSync extends Activity
 		// cleanup here. Applications should save data etc on
 		// EVENT_TYPE_FOCUS_LOST.
 		sendCloseEvent();
-    }
+	}
 
 	@Override
 	/**
@@ -470,7 +470,7 @@ public class MoSync extends Activity
 	@Override
 	protected void onRestoreInstanceState( Bundle savedInstanceState)
 	{
-	    Log.i( "@@MoSync", "onRestoreInstanceState");
+		Log.i( "@@MoSync", "onRestoreInstanceState");
 	}
 
 	/**
@@ -484,7 +484,7 @@ public class MoSync extends Activity
 		try
 		{
 			return new MoSyncView(this, mMoSyncThread);
-        }
+		}
 		catch (Exception ex)
 		{
 			MoSyncThread.logError(
@@ -728,9 +728,9 @@ public class MoSync extends Activity
 	 * Register a broadcast receiver that listens for device shutdown events
 	 * (power off the device).
 	 */
-    private void registerShutdownListener()
-    {
-    	mShutdownListener = new BroadcastReceiver()
+	private void registerShutdownListener()
+	{
+		mShutdownListener = new BroadcastReceiver()
 		{
 			@Override
 			public void onReceive(Context context, Intent intent)
@@ -745,33 +745,33 @@ public class MoSync extends Activity
 		registerReceiver(
 			mShutdownListener,
 			new IntentFilter(Intent.ACTION_SHUTDOWN));
-    }
+	}
 
-    /**
-     * Unregister the shutdown listener.
-     */
-    private void unregisterShutdownListener()
-    {
-    	if (null != mShutdownListener)
-    	{
-    		unregisterReceiver(mShutdownListener);
-    		mShutdownListener = null;
-    	}
-    }
+	/**
+	 * Unregister the shutdown listener.
+	 */
+	private void unregisterShutdownListener()
+	{
+		if (null != mShutdownListener)
+		{
+			unregisterReceiver(mShutdownListener);
+			mShutdownListener = null;
+		}
+	}
 
-    /**
-     * Posts an EVENT_TYPE_CLOSE to the MoSync events queue.
-     */
-    private void sendCloseEvent()
-    {
-    	if (!mEventTypeCloseHasBeenSent)
-    	{
+	/**
+	 * Posts an EVENT_TYPE_CLOSE to the MoSync events queue.
+	 */
+	private void sendCloseEvent()
+	{
+		if (!mEventTypeCloseHasBeenSent)
+		{
 			// Send EVENT_TYPE_CLOSE
 			int[] event = new int[1];
 			event[0] = EVENT_TYPE_CLOSE;
 			mMoSyncThread.postEvent(event);
 
-    		mEventTypeCloseHasBeenSent = true;
-    	}
-    }
+			mEventTypeCloseHasBeenSent = true;
+		}
+	}
 }

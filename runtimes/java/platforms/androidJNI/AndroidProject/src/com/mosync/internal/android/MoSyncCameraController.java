@@ -14,6 +14,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.lang.System;
 
 import android.app.Activity;
+import android.content.Context;
 import android.hardware.Camera;
 import android.hardware.Camera.PictureCallback;
 
@@ -21,60 +22,65 @@ import java.lang.Thread;
 
 import android.os.Build;
 import android.util.Log;
+import android.view.OrientationEventListener;
 
 import com.mosync.internal.generated.MAAPI_consts;
+import com.mosync.nativeui.ui.widgets.CameraOrientationEventListener;
 import com.mosync.nativeui.ui.widgets.MoSyncCameraPreview;
 
 /**
- *
  * A class that controls the behavior of camera and the camera preview
- * @author Ali Sarrafi
- *
+ * @author Ali Sarrafi, Mikael Kindborg
  */
-public class MoSyncCameraController {
-
+public class MoSyncCameraController
+{
 	/**
-	 * Thread Synchronization variables used to synchronize the
-	 * snapshot call and the call backs
-	 *
+	 * Thread synchronization variables used to synchronize a
+	 * snapshot call and callback.
 	 */
 	private boolean dataReady;
 	private final ReentrantLock lock;
 	private final Condition condition;
 
+	/**
+	 * The camera object.
+	 */
 	private Camera mCamera;
 
+	/**
+	 * TODO: What are these used for?
+	 */
 	private byte[] mCallbackBuffer = null;
 	private byte[] mImageBuffer = null;
 
 	/**
-	* Stores number of availabe cameras on the device
-	*/
+	 * Stores number of available cameras on the device
+	 */
 	private int mNumCameras;
 
 	/**
-	* Indicates the current camera index
-	*/
+	 * Indicates the current camera index
+	 */
 	private int mCurrentCameraIndex;
 
 	/**
-	* Stores the paramters for each camera
-	*/
+	 * Stores the parameters for each camera
+	 */
 	List<Camera.Parameters> mCameraParametersList;
 
 	/**
 	 * A flag that indicates the format of the image to be taken
 	 */
 	private boolean rawMode;
+
 	/**
 	 * A private attribute used to keep track of
 	 * the data place holder in each snapshot
 	 */
 	private int resourceIndex;
 
-
 	/**
-	 * Arrays to store user assigned sizes
+	 * Arrays to store user assigned sizes.
 	 */
 	List <Integer> userWidths;
 	List <Integer> userHeights;
@@ -85,26 +91,33 @@ public class MoSyncCameraController {
 	 */
 	private MoSyncCameraPreview mPreview;
 
-
 	/**
 	 * The MoSync thread object.
 	 */
 	public MoSyncThread mMoSyncThread;
 
-
+	/**
+	 * TODO: Move preview data to its own class.
+	 */
 	private boolean mMoSyncPreviewEventEnabled = false;
 	private boolean mMoSyncPreviewFrameEventEnabled = false;
 	private boolean mMoSyncPreviewAutoFocusEventEnabled = false;
 	private IntBuffer mMoSyncPreviewEventBuffer = null;
-
 	private boolean mMoSyncPreviewHasFocus = false;
-
 	private int mPreviewEventBufferLeft;
 	private int mPreviewEventBufferTop;
 	private int mPreviewEventBufferRight;
 	private int mPreviewEventBufferBottom;
 
+	/**
+	 * TODO: What is this used for?
+	 */
 	private boolean mSendEvent = true;
+
+	/**
+	 * Event listener for device orientation and camera picture orientation.
+	 */
+	private OrientationListener mOrientationListener;
 
 	/**
 	 * Constructor.
@@ -124,7 +137,16 @@ public class MoSyncCameraController {
 		initializeCameras();
 		rawMode = false;
 		mCurrentCameraIndex = 0;
+		createOrientationListener();
+	}
 
+	private void createOrientationListener()
+	{
+		mOrientationListener = new OrientationListener(mMoSyncThread.getActivity());
+		if (mOrientationListener.canDetectOrientation())
+		{
+			mOrientationListener.enable();
+		}
 	}
 
 	/**
@@ -138,7 +160,7 @@ public class MoSyncCameraController {
 		int apiLevel = Build.VERSION.SDK_INT;
 		if (apiLevel >= Build.VERSION_CODES.GINGERBREAD)
 		{
-		    return Camera.open(cameraIndex);
+			return Camera.open(cameraIndex);
 		}
 		else
 		{
@@ -156,14 +178,14 @@ public class MoSyncCameraController {
 			mCurrentCameraIndex = 0;
 			// TODO: If mNumCameras is less than 1 we have no camera?
 			// Then does it work to open it?
-			if(mNumCameras <= 1)
+			if (mNumCameras <= 1)
 			{
 				mCamera = cameraOpen(0);
 				mCameraParametersList.add(mCamera.getParameters());
 			}
 			else
 			{
-				if(mCamera != null)
+				if (mCamera != null)
 					mCamera.release();
 				for(int ii=0; ii < mNumCameras; ii++)
 				{
@@ -252,7 +274,7 @@ public class MoSyncCameraController {
 		acquireCamera();
 
 		mPreview = preview;
-		if(mPreview.mCamera == null)
+		if (mPreview.mCamera == null)
 		{
 			mPreview.mCamera = mCamera;
 			mPreview.initiateCamera();
@@ -269,7 +291,7 @@ public class MoSyncCameraController {
 
 	private void setPreviewCallback()
 	{
-		if(mCamera == null)
+		if (mCamera == null)
 		{
 			android.util.Log.e("MOSYNC INTERNAL","No Preview set");
 			return;
@@ -321,9 +343,9 @@ public class MoSyncCameraController {
 	 */
 	public int setActiveCamera(int CameraNumber)
 	{
-		if(mNumCameras > 1)
+		if (mNumCameras > 1)
 		{
-			if(mCurrentCameraIndex != CameraNumber)
+			if (mCurrentCameraIndex != CameraNumber)
 			{
 				mCurrentCameraIndex = CameraNumber;
 				if (null != mCamera)
@@ -348,7 +370,7 @@ public class MoSyncCameraController {
 	 */
 	public boolean hasView()
 	{
-		if(mPreview == null)
+		if (mPreview == null)
 			return false;
 		else
 			return true;
@@ -373,7 +395,7 @@ public class MoSyncCameraController {
 
 		try
 		{
-			if(mPreview.mCamera == null)
+			if (mPreview.mCamera == null)
 			{
 				mPreview.mCamera = mCamera;
 				mPreview.initiateCamera();
@@ -417,7 +439,7 @@ public class MoSyncCameraController {
 	 */
 	public int cameraSnapshot(int formatIndex, int placeHolder)
 	{
-		if(formatIndex >= 0)
+		if (formatIndex >= 0)
 		{
 			setNewSize(formatIndex);
 		}
@@ -454,16 +476,16 @@ public class MoSyncCameraController {
 
 	public int setCameraProperty(String key, String value)
 	{
-		if(mCamera == null)
+		if (mCamera == null)
 		{
 			return MAAPI_consts.MA_CAMERA_RES_FAILED;
 		}
 		try
 		{
 			Camera.Parameters param = getCurrentParameters();
-			if(key.equals(MAAPI_consts.MA_CAMERA_IMAGE_FORMAT))
+			if (key.equals(MAAPI_consts.MA_CAMERA_IMAGE_FORMAT))
 			{
-				if(value.equals(MAAPI_consts.MA_CAMERA_IMAGE_RAW))
+				if (value.equals(MAAPI_consts.MA_CAMERA_IMAGE_RAW))
 				{
 					rawMode = true;
 				}
@@ -473,11 +495,11 @@ public class MoSyncCameraController {
 					rawMode = false;
 				}
 			}
-			else if(key.equals(MAAPI_consts.MA_CAMERA_FOCUS_MODE))
+			else if (key.equals(MAAPI_consts.MA_CAMERA_FOCUS_MODE))
 			{
-				if(value.equals(MAAPI_consts.MA_CAMERA_FOCUS_AUTO))
+				if (value.equals(MAAPI_consts.MA_CAMERA_FOCUS_AUTO))
 				{
-					if(false == param.getSupportedFocusModes().contains(value))
+					if (false == param.getSupportedFocusModes().contains(value))
 					{
 
 						return MAAPI_consts.MA_CAMERA_RES_VALUE_NOTSUPPORTED;
@@ -485,16 +507,16 @@ public class MoSyncCameraController {
 
 					mCamera.autoFocus(autoFocusCallback);
 				}
-				else if(value.equals(MAAPI_consts.MA_CAMERA_FOCUS_MACRO))
+				else if (value.equals(MAAPI_consts.MA_CAMERA_FOCUS_MACRO))
 				{
 
-					if(false == param.getSupportedFocusModes().contains(value))
+					if (false == param.getSupportedFocusModes().contains(value))
 					{
 						return MAAPI_consts.MA_CAMERA_RES_VALUE_NOTSUPPORTED;
 					}
 					mCamera.autoFocus(autoFocusCallback);
 				}
-				else if(false == param.getSupportedFocusModes().contains(value))
+				else if (false == param.getSupportedFocusModes().contains(value))
 				{
 					mCamera.cancelAutoFocus();
 					return MAAPI_consts.MA_CAMERA_RES_VALUE_NOTSUPPORTED;
@@ -504,9 +526,9 @@ public class MoSyncCameraController {
 
 				param.setFocusMode(value);
 			}
-			else if(key.equals(MAAPI_consts.MA_CAMERA_FLASH_MODE))
+			else if (key.equals(MAAPI_consts.MA_CAMERA_FLASH_MODE))
 			{
-				if(true == param.getSupportedFlashModes().contains(value))
+				if (true == param.getSupportedFlashModes().contains(value))
 				{
 					param.setFlashMode(value);
 				}
@@ -532,24 +554,24 @@ public class MoSyncCameraController {
 			int memBuffer,
 			int memBufferSize)
 	{
-		if(mCamera == null)
+		if (mCamera == null)
 		{
 			return MAAPI_consts.MA_CAMERA_RES_FAILED;
 		}
 		Camera.Parameters param = getCurrentParameters();
 		String result;
-		if(key.equals(MAAPI_consts.MA_CAMERA_IMAGE_FORMAT))
+		if (key.equals(MAAPI_consts.MA_CAMERA_IMAGE_FORMAT))
 		{
-			if(rawMode == true)
+			if (rawMode == true)
 				result = MAAPI_consts.MA_CAMERA_IMAGE_RAW;
 			else
 				result = MAAPI_consts.MA_CAMERA_IMAGE_JPEG;
 		}
-		else if(key.equals(MAAPI_consts.MA_CAMERA_FLASH_SUPPORTED))
+		else if (key.equals(MAAPI_consts.MA_CAMERA_FLASH_SUPPORTED))
 		{
-			if( param.getSupportedFlashModes() != null )
+			if ( param.getSupportedFlashModes() != null )
 			{
-				if(param.getSupportedFlashModes().size() == 1)
+				if (param.getSupportedFlashModes().size() == 1)
 				{
 					result = "false";
 				}
@@ -563,19 +585,19 @@ public class MoSyncCameraController {
 				result = "false";
 			}
 		}
-		else if(key.equals(MAAPI_consts.MA_CAMERA_ZOOM_SUPPORTED))
+		else if (key.equals(MAAPI_consts.MA_CAMERA_ZOOM_SUPPORTED))
 		{
-			if(param.isZoomSupported())
+			if (param.isZoomSupported())
 				result = "true";
 			else
 				result = "false";
 		}
 		else
 			result = param.get(key);
-		if(result == null)
+		if (result == null)
 			return MAAPI_consts.MA_CAMERA_RES_INVALID_PROPERTY_VALUE;
 
-		if( result.length( ) + 1 > memBufferSize )
+		if ( result.length( ) + 1 > memBufferSize )
 		{
 			Log.e( "Android Runtime", "maCameraGetProperty: Buffer size " + memBufferSize +
 					" too short to hold buffer of size: " + result.length( ) + 1 );
@@ -603,7 +625,7 @@ public class MoSyncCameraController {
 	 */
 	public void releaseCamera()
 	{
-		if(mCamera != null)
+		if (mCamera != null)
 		{
 			mCamera.release();
 
@@ -620,7 +642,7 @@ public class MoSyncCameraController {
 	public void acquireCamera()
 	{
 		SYSLOG("acquireCamera");
-		if(mCamera == null)// && mPreview != null)
+		if (mCamera == null)// && mPreview != null)
 		{
 			try
 			{
@@ -652,8 +674,8 @@ public class MoSyncCameraController {
 	 */
 	private void setNewSize(int formatIndex)
 	{
-    	try
-    	{
+		try
+		{
 			Camera.Parameters parameters = getCurrentParameters();
 			List <Camera.Size> supportedSizes =  parameters.getSupportedPictureSizes();
 			try {
@@ -666,11 +688,11 @@ public class MoSyncCameraController {
 			}
 			if (mCamera != null)
 				mCamera.setParameters(parameters);
-    	}
-    	catch (Exception e)
-    	{
+		}
+		catch (Exception e)
+		{
 			SYSLOG("FAILED TO SET the PARAMETERS " + e);
-    	}
+		}
 	}
 
 	public int getPreviewSize()
@@ -693,7 +715,7 @@ public class MoSyncCameraController {
 	PictureCallback rawCallback = new PictureCallback() {
 		@Override
 		public void onPictureTaken(byte[] data, Camera camera) {
-			if(rawMode == true)
+			if (rawMode == true)
 			{
 				lock.lock();
 				try {
@@ -719,7 +741,7 @@ public class MoSyncCameraController {
 	PictureCallback jpegCallback = new PictureCallback() {
 		@Override
 		public void onPictureTaken(byte[] data, Camera camera) {
-			if(rawMode == false)
+			if (rawMode == false)
 			{
 				lock.lock();
 				try {
@@ -740,18 +762,18 @@ public class MoSyncCameraController {
 	};
 
 	/**
-	 * Handles the preview callbacks, which is fired everytime the camera has a new preview
+	 * Handles preview callback events, which are fired every
+	 * time the camera has a new preview image.
 	 * Returns directly unless the user has enabled preview events.
-	 *
 	 */
 	Camera.PreviewCallback previewCallback = new Camera.PreviewCallback()
 	{
 		@Override
 		public void onPreviewFrame(byte[] data, Camera camera)
 		{
-			if(!mMoSyncPreviewFrameEventEnabled)
+			if (!mMoSyncPreviewFrameEventEnabled)
 			{
-				if(!mMoSyncPreviewAutoFocusEventEnabled)
+				if (!mMoSyncPreviewAutoFocusEventEnabled)
 				{
 					// Return the buffer if in use
 					camera.addCallbackBuffer(data);
@@ -759,7 +781,7 @@ public class MoSyncCameraController {
 					return;
 				}
 
-				if(!mMoSyncPreviewHasFocus)
+				if (!mMoSyncPreviewHasFocus)
 				{
 					// Return the buffer if in use
 					camera.addCallbackBuffer(data);
@@ -771,7 +793,7 @@ public class MoSyncCameraController {
 				mMoSyncPreviewHasFocus = false;
 			}
 
-			if(!mSendEvent)
+			if (!mSendEvent)
 			{
 				// Return the buffer if in use
 				camera.addCallbackBuffer(data);
@@ -783,13 +805,13 @@ public class MoSyncCameraController {
 
 			try
 			{
-				if(data != null)
+				if (data != null)
 				{
 					mSendEvent = false;
 
 					System.arraycopy(data, 0, mImageBuffer, 0, data.length);
 
-					// To the time consuming task in a new thread
+					// Do the time consuming task in a new thread.
 					new Thread(new Runnable()
 					{
 						public void run()
@@ -824,19 +846,19 @@ public class MoSyncCameraController {
 		@Override
 		public void onAutoFocus(boolean success, Camera camera)
 		{
-			if(!mMoSyncPreviewAutoFocusEventEnabled)
+			if (!mMoSyncPreviewAutoFocusEventEnabled)
 				return;
 
-			if(success)
+			if (success)
 				mMoSyncPreviewHasFocus = true;
 		}
 	};
 
 	/**
-	* Converts from YUV420 to RGB888
-	* Source code for conversion found at:
-	* https://groups.google.com/forum/?hl=fr&fromgroups#!topic/android-developers/yF6CmrIJzuo
-	*/
+	 * Converts from YUV420 to RGB888
+	 * Source code for conversion found at:
+	 * https://groups.google.com/forum/?hl=fr&fromgroups#!topic/android-developers/yF6CmrIJzuo
+	 */
 	public void YUV420toRGB8888()
 	{
 		Camera.Size previewSize = mPreview.mPreviewSize;
@@ -850,44 +872,44 @@ public class MoSyncCameraController {
 
 		int i, j;
 		int Y, Cr = 0, Cb = 0;
-		for(j = mPreviewEventBufferTop; j < mPreviewEventBufferBottom; j++)
+		for (j = mPreviewEventBufferTop; j < mPreviewEventBufferBottom; j++)
 		{
 			int pixPtr = j * width;
 			final int jDiv2 = j >> 1;
-			for(i = mPreviewEventBufferLeft; i < mPreviewEventBufferRight; i++)
+			for (i = mPreviewEventBufferLeft; i < mPreviewEventBufferRight; i++)
 			{
 				Y = mImageBuffer[pixPtr++];
-				if(Y < 0)
+				if (Y < 0)
 					Y += 255;
-				if((i & 0x1) != 1)
+				if ((i & 0x1) != 1)
 				{
 					final int cOff = size + jDiv2 * width + (i >> 1) * 2;
 					Cb = mImageBuffer[cOff];
-					if(Cb < 0)
+					if (Cb < 0)
 						Cb += 127;
 					else
 						Cb -= 128;
 					Cr = mImageBuffer[cOff + 1];
-					if(Cr < 0)
+					if (Cr < 0)
 						Cr += 127;
 					else
 						Cr -= 128;
 				}
 				int R = Y + Cr + (Cr >> 2) + (Cr >> 3) + (Cr >> 5);
-				if(R < 0)
+				if (R < 0)
 					R = 0;
-				else if(R > 255)
+				else if (R > 255)
 					R = 255;
-				int G = Y - (Cb >> 2) + (Cb >> 4) + (Cb >> 5) - (Cr >> 1) + (Cr >>
-				3) + (Cr >> 4) + (Cr >> 5);
-				if(G < 0)
+				int G = Y - (Cb >> 2) + (Cb >> 4) + (Cb >> 5) - (Cr >> 1)
+						+ (Cr >> 3) + (Cr >> 4) + (Cr >> 5);
+				if (G < 0)
 					G = 0;
-				else if(G > 255)
+				else if (G > 255)
 					G = 255;
 				int B = Y + Cb + (Cb >> 1) + (Cb >> 2) + (Cb >> 6);
-				if(B < 0)
+				if (B < 0)
 					B = 0;
-				else if(B > 255)
+				else if (B > 255)
 					B = 255;
 				mMoSyncPreviewEventBuffer.put(0xff000000 + (B << 16) + (G << 8) + R);
 			}
@@ -909,45 +931,46 @@ public class MoSyncCameraController {
 	}
 
 	public int enablePreviewEvents(
-			int type,
-			int memBuffer,
-			int left,
-			int top,
-			int width,
-			int height)
+		int type,
+		int memBuffer,
+		int left,
+		int top,
+		int width,
+		int height)
 	{
-		if(mPreview == null && mCamera == null)
+		if (mPreview == null && mCamera == null)
 			return MAAPI_consts.MA_CAMERA_RES_FAILED;
 
-		if(mMoSyncPreviewEventEnabled)
+		if (mMoSyncPreviewEventEnabled)
 			return MAAPI_consts.MA_CAMERA_RES_EVENTS_ALREADY_ENABLED;
 
-		if(type == MAAPI_consts.MA_CAMERA_PREVIEW_FRAME)
+		if (type == MAAPI_consts.MA_CAMERA_PREVIEW_FRAME)
 		{
-			if(mMoSyncPreviewAutoFocusEventEnabled)
+			if (mMoSyncPreviewAutoFocusEventEnabled)
 				return MAAPI_consts.MA_CAMERA_RES_EVENTS_ALREADY_ENABLED;
 
 			// enable preview frame events
 			mMoSyncPreviewFrameEventEnabled = true;
-
 		}
-		else if(type == MAAPI_consts.MA_CAMERA_PREVIEW_AUTO_FOCUS)
+		else if (type == MAAPI_consts.MA_CAMERA_PREVIEW_AUTO_FOCUS)
 		{
-			if(mMoSyncPreviewFrameEventEnabled)
+			if (mMoSyncPreviewFrameEventEnabled)
 				return MAAPI_consts.MA_CAMERA_RES_EVENTS_ALREADY_ENABLED;
 
-			// enable preview auto foucs events
+			// Enable preview auto focus events.
 			mMoSyncPreviewAutoFocusEventEnabled = true;
-
 		}
-		else return MAAPI_consts.MA_CAMERA_RES_FAILED;
+		else
+		{
+			return MAAPI_consts.MA_CAMERA_RES_FAILED;
+		}
 
-		// Get the size of the preview and make sure the rect
-		// ins't too big!
-		//Camera.Parameters camParam = mCamera.getParameters();
+		// Get the size of the preview and make sure the
+		// image size is not too big!
+
 		Camera.Size previewSize = mPreview.mPreviewSize;
 
-		if(previewSize == null)
+		if (previewSize == null)
 		{
 			SYSLOG("Preview size is null");
 			return MAAPI_consts.MA_CAMERA_RES_FAILED;
@@ -956,19 +979,22 @@ public class MoSyncCameraController {
 		int w = previewSize.width;
 		int h = previewSize.height;
 
-		if((left + width) > w)
+		// Image rectangle must not be too big.
+		if ((left + width) > w)
 			return MAAPI_consts.MA_CAMERA_RES_INVALID_PREVIEW_SIZE;
-		if((top + height) > h)
+		if ((top + height) > h)
 			return MAAPI_consts.MA_CAMERA_RES_INVALID_PREVIEW_SIZE;
 
+		// Size of image data.
 		int sliceSize = width * height * 4;
-
 		mMoSyncPreviewEventBuffer =
 			mMoSyncThread.getMemorySlice(memBuffer, sliceSize).asIntBuffer();
-
-		if(mMoSyncPreviewEventBuffer == null)
+		if (mMoSyncPreviewEventBuffer == null)
 			return MAAPI_consts.MA_CAMERA_RES_FAILED;
 
+		// TODO: Consider moving preview data to its own class.
+		// Potential confusing between preview widget and preview events,
+		// what is the difference?
 		mPreviewEventBufferLeft = left;
 		mPreviewEventBufferTop = top;
 		mPreviewEventBufferRight = left + width;
@@ -992,7 +1018,7 @@ public class MoSyncCameraController {
 
 	public int previewEventConsumed()
 	{
-		if(!mMoSyncPreviewEventEnabled)
+		if (!mMoSyncPreviewEventEnabled)
 			return MAAPI_consts.MA_CAMERA_RES_FAILED;
 
 		mSendEvent = true;
@@ -1001,19 +1027,76 @@ public class MoSyncCameraController {
 		return MAAPI_consts.MA_CAMERA_RES_OK;
 	}
 
-	private byte[] int2byte(int[]src)
+	private byte[] int2byte(int[] src)
 	{
 		int srcLength = src.length;
-		    byte[]dst = new byte[srcLength << 2];
-
-		    for (int i=0; i<srcLength; i++) {
-				int x = src[i];
-				int j = i << 2;
-				dst[j++] = (byte) ((x >>> 0) & 0xff);
-				dst[j++] = (byte) ((x >>> 8) & 0xff);
-				dst[j++] = (byte) ((x >>> 16) & 0xff);
-				dst[j++] = (byte) ((x >>> 24) & 0xff);
-		    }
-		    return dst;
+		byte[]dst = new byte[srcLength << 2];
+		for (int i=0; i<srcLength; i++)
+		{
+			int x = src[i];
+			int j = i << 2;
+			dst[j++] = (byte) ((x >>> 0) & 0xff);
+			dst[j++] = (byte) ((x >>> 8) & 0xff);
+			dst[j++] = (byte) ((x >>> 16) & 0xff);
+			dst[j++] = (byte) ((x >>> 24) & 0xff);
+		}
+		return dst;
 	}
-}
+
+	/**
+	 * Class that receives device orientation change events and
+	 * sets up the camera parameters when device is rotated.
+	 * @author Mikael Kindborg
+	 */
+	class OrientationListener extends OrientationEventListener
+	{
+		static final int ORIENTATION_PORTRAIT_NORMAL =  1;
+		static final int ORIENTATION_PORTRAIT_INVERTED =  2;
+		static final int ORIENTATION_LANDSCAPE_NORMAL =  3;
+		static final int ORIENTATION_LANDSCAPE_INVERTED =  4;
+
+		OrientationListener(Context context)
+		{
+			super(context);
+		}
+
+		/**
+		 * When the device is rotated, the camera rotation
+		 * parameter is updated.
+		 * See: http://developer.android.com/reference/android/hardware/Camera.Parameters.html#setRotation(int)
+		 */
+		public void onOrientationChanged(int orientation)
+		{
+			android.util.Log.i("MOSYNC", "onOrientationChanged: " + orientation);
+
+			/*
+			if (orientation == ORIENTATION_UNKNOWN) { return; }
+
+			// Camera.getCameraInfo() is API Level 9.
+			int apiLevel = Build.VERSION.SDK_INT;
+			if (apiLevel >= Build.VERSION_CODES.GINGERBREAD)
+			{
+				CameraInfo info = new CameraInfo();
+				Camera.getCameraInfo(mCameraIndex, info);
+				orientation = (orientation + 45) / 90 * 90;
+				int rotation = 0;
+				if (info.facing == CameraInfo.CAMERA_FACING_FRONT)
+				{
+					// Front-facing camera.
+					rotation = (info.orientation - orientation + 360) % 360;
+				}
+				else
+				{
+					// Back-facing camera.
+					rotation = (info.orientation + orientation) % 360;
+				}
+
+				// Update camera rotation parameters.
+				Camera.Parameters parameters = mCamera.getParameters();
+				parameters.setRotation(rotation);
+				mCamera.setParameters(parameters);
+			}
+			*/
+		}
+	} // class OrientationListener
+} // MoSyncCameraController
