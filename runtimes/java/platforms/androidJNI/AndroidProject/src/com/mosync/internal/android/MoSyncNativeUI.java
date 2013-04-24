@@ -362,19 +362,21 @@ public class MoSyncNativeUI implements RootViewReplacedListener
 
 		try
 		{
-			final AsyncWait<Integer> waiter = new AsyncWait<Integer>();
+			//final AsyncWait<Integer> waiter = new AsyncWait<Integer>();
 			getActivity().runOnUiThread(new Runnable()
 			{
 				public void run()
 				{
 					int result = mNativeUI.maWidgetSetProperty(
 						widgetHandle, key, value);
-					waiter.setResult(result);
+					//waiter.setResult(result);
 				}
 			});
-			return waiter.getResult();
+			//return waiter.getResult();
+			return 1;
 		}
-		catch(InterruptedException ie)
+		//catch(InterruptedException ie)
+		catch(Exception ie)
 		{
 			return -1;
 		}
