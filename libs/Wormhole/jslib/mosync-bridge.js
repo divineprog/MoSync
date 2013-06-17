@@ -59,6 +59,151 @@ var mosync = (function()
 		mosync.bridge.send(["MoSync", "SysLog", s]);
 	};
 
+	// Test support.
+
+    mosync.test = (function()
+	{
+		var test = {};
+
+		var mTestCases = [];
+		var mCurrentTestCase = -1;
+		var mTestTimeout = null;
+
+		/**
+		 * Set the listener object that will be notified
+		 * of assert and other events.
+		 */
+		test.setListener = function(listener)
+		{
+			test.listener = listener;
+		};
+
+		/**
+		 * Create deafult listener that reports test results
+		 * using mosync.rlog.
+		 */
+		test.setListener(function()
+		{
+			var me = {};
+
+			var mNumberOfFailed = 0;
+			var mNumberOfPassed = 0;
+			var mNumberOfTimeouts = 0;
+
+			me.assert = function(testCase, label, cond)
+			{
+				if (!cond)
+				{
+					mNumberOfFailed ++;
+					testCase.name
+					mosync.rlog("FAIL! " + label);
+				}
+				else
+				{
+					mNumberOfPassed ++;
+					//mosync.rlog("Test passed: " + label);
+				}
+			},
+
+			me.timeout = function(testCase)
+			{
+				mNumberOfTimeouts ++;
+				mosync.rlog("TIMEOUT! " + testCase.name);
+			},
+
+			me.allTestsDone = function()
+			{
+				mosync.rlog(
+					"All tests done (passed: " +
+					mNumberOfPassed +
+					" failed: " +
+					mNumberOfFailed +
+					" timeouts: " +
+					mNumberOfTimeouts + ")");
+			}
+
+			return me;
+		}());
+
+		/**
+		 * Start all test cases. This may run test cases
+		 * asynchronously.
+		 */
+		test.runAllTestCases = function()
+		{
+			for (var i in mTestCases)
+			{
+				var testCase = mTestCases[i];
+				testCase.fun(testCase);
+			}
+		};
+
+		/**
+		 * Run the next test case. This is used to
+		 * make async tests run in sequence.
+		 */
+		test.runNextTestCase = function()
+		{
+			// There must be test cases to run.
+			if (mTestCases.length > 0)
+			{
+				// Move to next test case.
+				mCurrentTestCase ++;
+
+				// If last test case has been run, report the
+				// result and reset the test case index.
+				if (mCurrentTestCase >= mTestCases.length)
+				{
+					mCurrentTestCase = -1;
+					test.listener.allTestsDone();
+				}
+				else
+				{
+					// Get next test case.
+					var testCase = mTestCases[mCurrentTestCase];
+
+					// Set the timeout for running the test case.
+					if (mTestTimeout) { clearTimeout(mTestTimeout); }
+					mTestTimeout = setTimeout(function() {
+						test.testCaseTimeout(testCase); }, 2000);
+
+					// Run test case.
+					testCase.fun(testCase);
+				}
+			}
+		};
+
+		test.testCaseTimeout = function(testCase)
+		{
+			test.listener.timeout(testCase);
+			test.listener.allTestsDone();
+		};
+
+		/**
+		 * Declare a test case. The test case is an object
+		 * with a function that runs the test case.
+		 */
+		test.testCase = function (name, fun)
+		{
+			var testCase =
+			{
+				"name": name,
+				"fun": fun,
+				"runNextTestCase": function()
+				{
+					test.runNextTestCase();
+				},
+				"assert": function(label, cond)
+				{
+					test.listener.assert(testCase, label, cond);
+				}
+			};
+			mTestCases.push(testCase);
+		};
+
+		return test;
+	})(); // mosync.test
+
 	// Application functions.
 
 	mosync.app = {};
